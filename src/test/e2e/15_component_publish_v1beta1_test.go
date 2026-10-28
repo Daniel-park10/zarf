@@ -78,4 +78,19 @@ func TestComponentPublish(t *testing.T) {
 		require.FileExists(t, filepath.Join(manifestsDir, "local-manifest-0.yaml"))
 		require.FileExists(t, filepath.Join(manifestsDir, "kustomization-local-kustomization-0.yaml"))
 	})
+
+	t.Run("reject signing non-component artifact", func(t *testing.T) {
+		stdOut, stdErr, err := e2e.Zarf(t, "package", "create", filepath.Join("src", "test", "packages", "11-simple-package"), "-o", "oci://"+registryURL, "--plain-http")
+		require.NoError(t, err, stdOut, stdErr)
+
+		_, stdErr, err = e2e.Zarf(t, "component", "sign", registryURL+"/simple-package:0.0.1", "--plain-http", "--signing-key", privateKey, "--confirm")
+		require.Error(t, err)
+		require.Contains(t, stdErr, "not a Zarf component")
+	})
+
+	t.Run("reject verifying non-component artifact", func(t *testing.T) {
+		_, stdErr, err := e2e.Zarf(t, "component", "verify", registryURL+"/simple-package:0.0.1", "--plain-http", "--key", publicKey)
+		require.Error(t, err)
+		require.Contains(t, stdErr, "not a Zarf component")
+	})
 }

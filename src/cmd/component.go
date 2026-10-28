@@ -4,18 +4,24 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path"
 	"strings"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/zarf-dev/zarf/src/config"
 	"github.com/zarf-dev/zarf/src/config/lang"
 	"github.com/zarf-dev/zarf/src/pkg/component"
 	"github.com/zarf-dev/zarf/src/pkg/helpers"
 	"github.com/zarf-dev/zarf/src/pkg/logger"
+	"github.com/zarf-dev/zarf/src/pkg/packager/layout"
 	"github.com/zarf-dev/zarf/src/pkg/signing"
+	"github.com/zarf-dev/zarf/src/pkg/zoci"
+	"github.com/zarf-dev/zarf/src/types"
 	"oras.land/oras-go/v2/registry"
 )
 
@@ -159,6 +165,11 @@ func (o *componentSignOptions) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid component source: %w", err)
 	}
 
+	remoteOpts := defaultRemoteOptions()
+	if err := validateComponentArtifact(cmd.Context(), componentRef.String(), remoteOpts); err != nil {
+		return err
+	}
+
 	if o.keyless {
 		logger.From(cmd.Context()).Info("signing component manifest via Sigstore keyless flow")
 	} else {
@@ -166,7 +177,7 @@ func (o *componentSignOptions) run(cmd *cobra.Command, args []string) error {
 	}
 
 	signOpts := o.buildSignManifestOptions(cmd, getViper(), VPkgSignTlogUpload, o.confirm)
-	err = signing.SignManifest(cmd.Context(), componentRef.String(), signOpts, defaultRemoteOptions())
+	err = signing.SignManifest(cmd.Context(), componentRef.String(), signOpts, remoteOpts)
 	if err != nil {
 		return fmt.Errorf("failed to sign component manifest: %w", err)
 	}
@@ -211,6 +222,11 @@ func (o *componentVerifyOptions) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid component source: %w", err)
 	}
 
+	remoteOpts := defaultRemoteOptions()
+	if err := validateComponentArtifact(cmd.Context(), componentRef.String(), remoteOpts); err != nil {
+		return err
+	}
+
 	l := logger.From(cmd.Context())
 	l.Info("verifying component manifest signature", "source", helpers.OCIURLPrefix+componentRef.String())
 	verifyOpts := signing.DefaultVerifyManifestOptions()
@@ -222,10 +238,32 @@ func (o *componentVerifyOptions) run(cmd *cobra.Command, args []string) error {
 	verifyOpts.TrustedRoot = o.trustedRoot
 	verifyOpts.InsecureIgnoreTlog = o.validateKeylessVerifyTlog(cmd, getViper())
 	verifyOpts.UseSignedTimestamps = o.useSignedTimestamps
-	if err := signing.VerifyManifest(cmd.Context(), componentRef.String(), verifyOpts, defaultRemoteOptions()); err != nil {
+	if err := signing.VerifyManifest(cmd.Context(), componentRef.String(), verifyOpts, remoteOpts); err != nil {
 		return fmt.Errorf("component signature verification failed: %w", err)
 	}
 
 	l.Info("component signature verification", "status", "PASSED")
+	return nil
+}
+
+func validateComponentArtifact(ctx context.Context, componentSource string, remoteOpts types.RemoteOptions) error {
+	remote, err := zoci.NewRemoteWithOptions(ctx, helpers.OCIURLPrefix+componentSource, ocispec.Platform{Architecture: config.GetArch()}, zoci.RemoteClientOptions{
+		RemoteOptions: remoteOpts,
+	})
+	if err != nil {
+		return fmt.Errorf("unable to connect to registry for component %q: %w", componentSource, err)
+	}
+	root, err := remote.ResolveRoot(ctx)
+	if err != nil {
+		return fmt.Errorf("artifact %q is not a Zarf component: %w", componentSource, err)
+	}
+	manifest, err := remote.FetchManifest(ctx, root)
+	if err != nil {
+		return fmt.Errorf("unable to fetch manifest for component %q: %w", componentSource, err)
+	}
+	if manifest.Config.MediaType != layout.ZarfComponentConfigMediaType {
+		return fmt.Errorf("artifact %q is not a Zarf component: expected config media type %q, got %q",
+			componentSource, layout.ZarfComponentConfigMediaType, manifest.Config.MediaType)
+	}
 	return nil
 }

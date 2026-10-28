@@ -370,6 +370,7 @@ func (p *PackageLayout) SignPackage(ctx context.Context, opts *signing.SignBlobO
 	// Configure signing. cosign v3.1.1+ writes only the bundle when NewBundleFormat=true.
 	signOpts := *opts
 	signOpts.NewBundleFormat = true
+	signOpts.OutputSignature = ""
 	actualBundlePath := filepath.Join(p.dirPath, Bundle)
 	signOpts.BundlePath = actualBundlePath
 	if err = signOpts.CheckOverwrite(ctx); err != nil {
@@ -378,9 +379,9 @@ func (p *PackageLayout) SignPackage(ctx context.Context, opts *signing.SignBlobO
 
 	signOpts.BundlePath = tmpBundlePath
 
-	// Perform the signing operation on the temp file
+	// Perform the signing operation on the temp file using native sigstore-go
 	l.Debug("signing package", "source", tmpZarfYAMLPath, "bundle", tmpBundlePath)
-	if _, err = signing.CosignSignBlobWithOptions(ctx, tmpZarfYAMLPath, signOpts); err != nil {
+	if _, err = signing.SignBlobWithOptions(ctx, tmpZarfYAMLPath, signOpts); err != nil {
 		return fmt.Errorf("failed to sign package: %w", err)
 	}
 

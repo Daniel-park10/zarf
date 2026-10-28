@@ -184,6 +184,7 @@ func DefaultVerifyManifestOptions() VerifyManifestOptions {
 
 // CosignSignBlobWithOptions signs a blob via cosign's SignBlobCmd.
 // Mirrors cmd/cosign/cli/signblob.go (v3.0.6) SignBlob().RunE.
+// For native sigstore-go signing, use SignBlobWithOptions.
 func CosignSignBlobWithOptions(ctx context.Context, blobPath string, opts SignBlobOptions) ([]byte, error) {
 	l := logger.From(ctx)
 	if opts.Timeout > 0 {
