@@ -21,6 +21,7 @@ import (
 	"github.com/zarf-dev/zarf/src/internal/checksum"
 	"github.com/zarf-dev/zarf/src/pkg/helpers"
 	"github.com/zarf-dev/zarf/src/pkg/images"
+	"github.com/zarf-dev/zarf/src/pkg/images/mediatype"
 	"github.com/zarf-dev/zarf/src/pkg/logger"
 	"github.com/zarf-dev/zarf/src/pkg/oci"
 	"github.com/zarf-dev/zarf/src/pkg/packager/layout"
@@ -425,13 +426,13 @@ func LayersFromImages(ctx context.Context, root *oci.Manifest, fetcher content.F
 		layers = append(layers, root.Locate(filepath.Join(layout.ImagesBlobsDir, entry.Digest.Encoded())))
 
 		switch {
-		case images.IsIndex(entry.MediaType):
+		case mediatype.IsIndex(entry.MediaType):
 			childLayers, err := layersFromIndexChildren(ctx, root, fetcher, entry)
 			if err != nil {
 				return nil, err
 			}
 			layers = append(layers, childLayers...)
-		case images.IsManifest(entry.MediaType):
+		case mediatype.IsManifest(entry.MediaType):
 			manifestLayers, err := layersFromManifestChildren(ctx, root, fetcher, entry)
 			if err != nil {
 				return nil, err
@@ -469,13 +470,13 @@ func layersFromIndexChildren(ctx context.Context, root *oci.Manifest, fetcher co
 	for _, child := range idx.Manifests {
 		layers = append(layers, root.Locate(filepath.Join(layout.ImagesBlobsDir, child.Digest.Encoded())))
 		switch {
-		case images.IsIndex(child.MediaType):
+		case mediatype.IsIndex(child.MediaType):
 			nestedLayers, err := layersFromIndexChildren(ctx, root, fetcher, child)
 			if err != nil {
 				return nil, err
 			}
 			layers = append(layers, nestedLayers...)
-		case images.IsManifest(child.MediaType):
+		case mediatype.IsManifest(child.MediaType):
 			manifestLayers, err := layersFromManifestChildren(ctx, root, fetcher, child)
 			if err != nil {
 				return nil, err

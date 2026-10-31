@@ -22,7 +22,7 @@ import (
 	"github.com/zarf-dev/zarf/src/api"
 	"github.com/zarf-dev/zarf/src/internal/checksum"
 	"github.com/zarf-dev/zarf/src/internal/pkgcfg"
-	"github.com/zarf-dev/zarf/src/pkg/images"
+	"github.com/zarf-dev/zarf/src/pkg/images/mediatype"
 	"github.com/zarf-dev/zarf/src/pkg/oci"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -370,7 +370,7 @@ func HasImageIndex(imageDir string) (bool, error) {
 		return false, fmt.Errorf("failed to parse %s: %w", idxPath, err)
 	}
 	for _, m := range idx.Manifests {
-		if images.IsIndex(m.MediaType) {
+		if mediatype.IsIndex(m.MediaType) {
 			return true, nil
 		}
 	}

@@ -121,3 +121,23 @@ func TestInspectIndex(t *testing.T) {
 		require.ElementsMatch(t, []string{"amd64"}, platforms)
 	})
 }
+
+func TestIsManifest(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, IsManifest(ocispec.MediaTypeImageManifest))
+	require.True(t, IsManifest(DockerMediaTypeManifest))
+	require.False(t, IsManifest(ocispec.MediaTypeImageIndex))
+	require.False(t, IsManifest(DockerMediaTypeManifestList))
+	require.False(t, IsManifest(""))
+}
+
+func TestIsIndex(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, IsIndex(ocispec.MediaTypeImageIndex))
+	require.True(t, IsIndex(DockerMediaTypeManifestList))
+	require.False(t, IsIndex(ocispec.MediaTypeImageManifest))
+	require.False(t, IsIndex(DockerMediaTypeManifest))
+	require.False(t, IsIndex(""))
+}

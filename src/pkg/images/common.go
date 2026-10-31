@@ -20,6 +20,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/zarf-dev/zarf/src/pkg/helpers"
+	"github.com/zarf-dev/zarf/src/pkg/images/mediatype"
 	"github.com/zarf-dev/zarf/src/pkg/logger"
 	"github.com/zarf-dev/zarf/src/pkg/state"
 	"oras.land/oras-go/v2/content"
@@ -42,9 +43,9 @@ type RegistryOverride struct {
 
 const (
 	// DockerMediaTypeManifest is the Legacy Docker manifest format, replaced by OCI manifest
-	DockerMediaTypeManifest = "application/vnd.docker.distribution.manifest.v2+json"
+	DockerMediaTypeManifest = mediatype.DockerMediaTypeManifest
 	// DockerMediaTypeManifestList is the legacy Docker manifest list, replaced by OCI index
-	DockerMediaTypeManifestList = "application/vnd.docker.distribution.manifest.list.v2+json"
+	DockerMediaTypeManifestList = mediatype.DockerMediaTypeManifestList
 )
 
 // Legacy Docker image layers
@@ -76,20 +77,12 @@ func OnlyHasImageLayers(manifest ocispec.Manifest) bool {
 
 // IsManifest reports whether the media type represents an OCI manifest.
 func IsManifest(mediaType string) bool {
-	switch mediaType {
-	case ocispec.MediaTypeImageManifest, DockerMediaTypeManifest:
-		return true
-	}
-	return false
+	return mediatype.IsManifest(mediaType)
 }
 
 // IsIndex reports whether the media type represents an OCI image index.
 func IsIndex(mediaType string) bool {
-	switch mediaType {
-	case ocispec.MediaTypeImageIndex, DockerMediaTypeManifestList:
-		return true
-	}
-	return false
+	return mediatype.IsIndex(mediaType)
 }
 
 func getManifestsFromOCILayout(imageDir string) ([]ocispec.Descriptor, error) {
